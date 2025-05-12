@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Latest Image</title>
+    <style>
+        body { display: flex; justify-content: center; align-items: center; }
+        img { max-width: 100%; max-height: 100vh; }
+    </style>
+</head>
+<body>
+    <img id="liveImage" src="/images/latest.jpg?cache=1">
+
+    <script>
+        // Refresh image every second
+        setInterval(() => {
+            const img = document.getElementById('liveImage');
+            img.src = `/images/latest.jpg?cache=${Date.now()}`;
+        }, 1000);
+    </script>
+</body>
+</html>
