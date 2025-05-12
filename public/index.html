@@ -17,11 +17,26 @@
         h1 {
             margin-bottom: 10px;
         }
+        .image-container {
+            position: relative;
+            width: 100%;
+            height: 70vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            border: 2px solid #ccc;
+            border-radius: 8px;
+            background-color: #f5f5f5;
+        }
+        .placeholder {
+            color: #999;
+            font-size: 18px;
+        }
         img { 
             max-width: 100%; 
             max-height: 70vh;
-            border: 2px solid #ccc;
             border-radius: 8px;
+            display: none; /* Hidden by default until loaded */
         }
         button {
             padding: 15px 30px;
@@ -40,29 +55,117 @@
             font-weight: bold;
             margin-top: 10px;
         }
+        .timestamp {
+            position: absolute;
+            bottom: 10px;
+            right: 10px;
+            background: rgba(0,0,0,0.6);
+            color: white;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 14px;
+            display: none;
+        }
     </style>
 </head>
 <body>
     <h1>iPhone Camera Trigger</h1>
-    <img id="liveImage" src="/images/latest.jpg?cache=1">
+    <div class="image-container">
+        <div class="placeholder">No image captured yet. Press the button to take a photo.</div>
+        <img id="liveImage" src="" alt="Captured Image">
+        <div id="imageTimestamp" class="timestamp"></div>
+    </div>
     <button id="triggerButton">Take Photo</button>
     <div id="status">Ready</div>
 
     <script>
         const liveImage = document.getElementById('liveImage');
+        const imageTimestamp = document.getElementById('imageTimestamp');
         const triggerButton = document.getElementById('triggerButton');
         const status = document.getElementById('status');
+        const placeholder = document.querySelector('.placeholder');
         
-        // Auto-refresh image every 5 seconds
-        setInterval(() => {
-            liveImage.src = `/images/latest.jpg?cache=${Date.now()}`;
-        }, 5000);
+        // Track the last successful image load timestamp
+        let lastSuccessfulLoad = null;
+        let isWaitingForPhoto = false;
+        
+        function formatTime(date) {
+            return date.toLocaleTimeString();
+        }
+        
+        // Check if the server has a valid image
+        async function checkForImage() {
+            try {
+                const response = await fetch('/status');
+                const data = await response.json();
+                
+                if (data.lastUploadTime) {
+                    // If there's a new image since our last load, refresh
+                    const uploadTime = new Date(data.lastUploadTime);
+                    if (!lastSuccessfulLoad || uploadTime > lastSuccessfulLoad) {
+                        refreshImage();
+                    }
+                    
+                    // If we were waiting for a new photo and it arrived
+                    if (isWaitingForPhoto) {
+                        status.textContent = 'Photo received successfully!';
+                        isWaitingForPhoto = false;
+                        setTimeout(() => {
+                            status.textContent = 'Ready';
+                        }, 3000);
+                    }
+                }
+            } catch (error) {
+                console.error("Error checking image status:", error);
+            }
+        }
+        
+        // Initial check + periodic check every 3 seconds
+        checkForImage();
+        setInterval(checkForImage, 3000);
+        
+        // Refresh image function
+        function refreshImage() {
+            const cacheBuster = Date.now();
+            liveImage.src = `/images/latest.jpg?cache=${cacheBuster}`;
+        }
+        
+        // Handle successful image load
+        liveImage.onload = () => {
+            lastSuccessfulLoad = new Date();
+            placeholder.style.display = 'none';
+            liveImage.style.display = 'block';
+            imageTimestamp.style.display = 'block';
+            imageTimestamp.textContent = formatTime(lastSuccessfulLoad);
+            
+            if (isWaitingForPhoto) {
+                status.textContent = 'Photo received successfully!';
+                isWaitingForPhoto = false;
+                setTimeout(() => {
+                    status.textContent = 'Ready';
+                    triggerButton.disabled = false;
+                }, 3000);
+            }
+        };
+        
+        // Handle image load error
+        liveImage.onerror = () => {
+            liveImage.style.display = 'none';
+            imageTimestamp.style.display = 'none';
+            placeholder.style.display = 'block';
+            
+            // Only show error if we were actively waiting for an image
+            if (isWaitingForPhoto) {
+                status.textContent = 'Waiting for photo...';
+            }
+        };
         
         // Trigger button handler
         triggerButton.addEventListener('click', async () => {
             try {
                 triggerButton.disabled = true;
                 status.textContent = 'Sending trigger to iPhone...';
+                isWaitingForPhoto = true;
                 
                 const response = await fetch('/trigger-shortcut', {
                     method: 'POST',
@@ -75,13 +178,18 @@
                 
                 status.textContent = 'Trigger sent! Waiting for iPhone to upload photo...';
                 
-                // Re-enable button after 3 seconds
+                // If no photo received after 15 seconds, reset
                 setTimeout(() => {
-                    triggerButton.disabled = false;
-                    status.textContent = 'Ready';
-                }, 3000);
+                    if (isWaitingForPhoto) {
+                        status.textContent = 'Photo not received. Try again.';
+                        isWaitingForPhoto = false;
+                        triggerButton.disabled = false;
+                    }
+                }, 15000);
+                
             } catch (error) {
                 status.textContent = `Error: ${error.message}`;
+                isWaitingForPhoto = false;
                 triggerButton.disabled = false;
             }
         });

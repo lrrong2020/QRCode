@@ -14,6 +14,8 @@ app.use(express.json());
 let shouldRunShortcut = false;
 // Timestamp of the last trigger
 let lastTriggerTime = null;
+// Timestamp of the last upload
+let lastUploadTime = null;
 
 // Configure storage for uploaded files
 const storage = multer.diskStorage({
@@ -65,11 +67,14 @@ app.post('/upload', upload.single('image'), (req, res) => {
 
   console.log(`Image successfully saved at: ${req.file.path}`);
   
+  // Update the last upload time
+  lastUploadTime = new Date();
+  
   // Send success response with timestamp
   res.json({ 
     success: true, 
     message: 'Image uploaded successfully',
-    timestamp: new Date().toISOString()
+    timestamp: lastUploadTime.toISOString()
   });
 });
 
@@ -116,7 +121,8 @@ app.get('/status', (req, res) => {
   res.json({
     serverTime: new Date().toISOString(),
     shouldRunShortcut: shouldRunShortcut,
-    lastTriggerTime: lastTriggerTime ? lastTriggerTime.toISOString() : null
+    lastTriggerTime: lastTriggerTime ? lastTriggerTime.toISOString() : null,
+    lastUploadTime: lastUploadTime ? lastUploadTime.toISOString() : null
   });
 });
 
