@@ -1,11 +1,11 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>iPhone Remote Camera Control</title>
+    <title>iPhone Camera Trigger</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <style>
         body { 
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
             display: flex; 
             flex-direction: column;
             align-items: center;
@@ -15,19 +15,7 @@
             margin: 0 auto;
         }
         h1 {
-            margin-bottom: 0;
-        }
-        .container {
-            display: flex;
-            flex-direction: column;
-            width: 100%;
-            gap: 20px;
-        }
-        .image-container {
-            position: relative;
-            width: 100%;
-            display: flex;
-            justify-content: center;
+            margin-bottom: 10px;
         }
         img { 
             max-width: 100%; 
@@ -35,144 +23,46 @@
             border: 2px solid #ccc;
             border-radius: 8px;
         }
-        .timestamp {
-            position: absolute;
-            bottom: 10px;
-            right: 10px;
-            background: rgba(0,0,0,0.6);
-            color: white;
-            padding: 4px 8px;
-            border-radius: 4px;
-            font-size: 14px;
-        }
-        .controls {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 10px;
-            justify-content: center;
-        }
         button {
-            padding: 12px 24px;
-            font-size: 16px;
+            padding: 15px 30px;
+            font-size: 18px;
             background: #007bff;
             color: white;
             border: none;
             border-radius: 5px;
             cursor: pointer;
-            transition: background 0.2s;
-        }
-        button:hover {
-            background: #0069d9;
         }
         button:disabled {
             background: #6c757d;
             cursor: not-allowed;
         }
-        .status-panel {
-            border: 1px solid #eee;
-            border-radius: 8px;
-            padding: 15px;
-            width: 100%;
-            background-color: #f8f9fa;
-        }
-        .status-item {
-            display: flex;
-            justify-content: space-between;
-            margin-bottom: 8px;
-        }
-        .status-title {
-            font-weight: bold;
-        }
-        .status-value {
-            color: #333;
-        }
-        #mainStatus {
-            text-align: center;
+        #status {
             font-weight: bold;
             margin-top: 10px;
         }
     </style>
 </head>
 <body>
-    <h1>iPhone Remote Camera Control</h1>
-    <div class="container">
-        <div class="image-container">
-            <img id="liveImage" src="/images/latest.jpg?cache=1">
-            <div id="imageTimestamp" class="timestamp">Loading...</div>
-        </div>
-        
-        <div class="controls">
-            <button id="triggerButton">Trigger Camera</button>
-            <button id="refreshButton">Refresh Image</button>
-            <button id="checkStatusButton">Check Status</button>
-        </div>
-        
-        <div id="mainStatus">Ready</div>
-        
-        <div class="status-panel">
-            <h3 style="margin-top: 0;">System Status</h3>
-            <div class="status-item">
-                <span class="status-title">Server Time:</span>
-                <span id="serverTime" class="status-value">-</span>
-            </div>
-            <div class="status-item">
-                <span class="status-title">Last Triggered:</span>
-                <span id="lastTriggered" class="status-value">-</span>
-            </div>
-            <div class="status-item">
-                <span class="status-title">Shortcut Status:</span>
-                <span id="shortcutStatus" class="status-value">-</span>
-            </div>
-            <div class="status-item">
-                <span class="status-title">Last Image Update:</span>
-                <span id="lastImageUpdate" class="status-value">-</span>
-            </div>
-        </div>
-    </div>
+    <h1>iPhone Camera Trigger</h1>
+    <img id="liveImage" src="/images/latest.jpg?cache=1">
+    <button id="triggerButton">Take Photo</button>
+    <div id="status">Ready</div>
 
     <script>
-        // Elements
         const liveImage = document.getElementById('liveImage');
-        const imageTimestamp = document.getElementById('imageTimestamp');
         const triggerButton = document.getElementById('triggerButton');
-        const refreshButton = document.getElementById('refreshButton');
-        const checkStatusButton = document.getElementById('checkStatusButton');
-        const mainStatus = document.getElementById('mainStatus');
-        const serverTimeEl = document.getElementById('serverTime');
-        const lastTriggeredEl = document.getElementById('lastTriggered');
-        const shortcutStatusEl = document.getElementById('shortcutStatus');
-        const lastImageUpdateEl = document.getElementById('lastImageUpdate');
-        
-        // Format date function
-        function formatDate(dateString) {
-            if (!dateString) return 'Never';
-            const date = new Date(dateString);
-            return date.toLocaleTimeString();
-        }
-        
-        // Refresh image function
-        function refreshImage() {
-            const cacheBuster = Date.now();
-            liveImage.src = `/images/latest.jpg?cache=${cacheBuster}`;
-            lastImageUpdateEl.textContent = new Date().toLocaleTimeString();
-        }
+        const status = document.getElementById('status');
         
         // Auto-refresh image every 5 seconds
-        setInterval(refreshImage, 5000);
-        
-        // Refresh image when it loads successfully
-        liveImage.onload = () => {
-            imageTimestamp.textContent = new Date().toLocaleTimeString();
-        };
-        
-        // Manual refresh button
-        refreshButton.addEventListener('click', refreshImage);
+        setInterval(() => {
+            liveImage.src = `/images/latest.jpg?cache=${Date.now()}`;
+        }, 5000);
         
         // Trigger button handler
         triggerButton.addEventListener('click', async () => {
             try {
                 triggerButton.disabled = true;
-                mainStatus.textContent = 'Sending trigger to iPhone...';
+                status.textContent = 'Sending trigger to iPhone...';
                 
                 const response = await fetch('/trigger-shortcut', {
                     method: 'POST',
@@ -180,51 +70,20 @@
                         'Content-Type': 'application/json'
                     }
                 });
-
-                const data = await response.json();
                 
                 if (!response.ok) throw new Error('Trigger failed');
                 
-                mainStatus.textContent = 'Trigger sent successfully!';
-                lastTriggeredEl.textContent = formatDate(data.timestamp);
-                shortcutStatusEl.textContent = 'Waiting for iPhone';
+                status.textContent = 'Trigger sent! Waiting for iPhone to upload photo...';
                 
-                setTimeout(() => mainStatus.textContent = 'Ready', 2000);
+                // Re-enable button after 3 seconds
+                setTimeout(() => {
+                    triggerButton.disabled = false;
+                    status.textContent = 'Ready';
+                }, 3000);
             } catch (error) {
-                mainStatus.textContent = `Error: ${error.message}`;
-            } finally {
+                status.textContent = `Error: ${error.message}`;
                 triggerButton.disabled = false;
             }
-        });
-        
-        // Check status button handler
-        checkStatusButton.addEventListener('click', async () => {
-            try {
-                checkStatusButton.disabled = true;
-                mainStatus.textContent = 'Checking server status...';
-                
-                const response = await fetch('/status');
-                const data = await response.json();
-                
-                if (!response.ok) throw new Error('Status check failed');
-                
-                serverTimeEl.textContent = formatDate(data.serverTime);
-                lastTriggeredEl.textContent = formatDate(data.lastTriggerTime);
-                shortcutStatusEl.textContent = data.shouldRunShortcut ? 'Pending' : 'Idle';
-                
-                mainStatus.textContent = 'Status updated';
-                setTimeout(() => mainStatus.textContent = 'Ready', 2000);
-            } catch (error) {
-                mainStatus.textContent = `Error: ${error.message}`;
-            } finally {
-                checkStatusButton.disabled = false;
-            }
-        });
-        
-        // Initial status check
-        window.addEventListener('load', () => {
-            checkStatusButton.click();
-            refreshImage();
         });
     </script>
 </body>
