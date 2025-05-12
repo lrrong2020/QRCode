@@ -68,7 +68,7 @@ app.post('/trigger-shortcut', async (req, res) => {
   
   try {
     // Call Pushcut webhook URL
-    await axios.post('https://api.pushcut.io/a3E2WUmTJYbG9XPNGaxbr/notifications/My%20First%20Notification');
+    await axios.post('https://api.pushcut.io/a3E2WUmTJYbG9XPNGaxbr/execute?shortcut=sc1');
     res.send('Shortcut triggered successfully');
   } catch (error) {
     console.error('Trigger failed:', error);
