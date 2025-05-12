@@ -62,6 +62,29 @@ app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'public/index.html'));
 });
 
+// Add this endpoint before app.listen()
+app.post('/trigger-shortcut', async (req, res) => {
+  console.log(`[${new Date().toISOString()}] Trigger request received`);
+  
+  try {
+    // Call Pushcut webhook URL
+    await axios.post('https://api.pushcut.io/a3E2WUmTJYbG9XPNGaxbr/notifications/My%20First%20Notification');
+    res.send('Shortcut triggered successfully');
+  } catch (error) {
+    console.error('Trigger failed:', error);
+    res.status(500).send('Trigger failed');
+  }
+  
+  res.json({ 
+      status: 'success',
+      message: 'Trigger command sent to device'
+  });
+});
+
+
 app.listen(port, () => {
   console.log(`Server running at http://localhost:${port}`);
 });
+
+// Add to your existing server.js
+const axios = require('axios');

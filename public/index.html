@@ -1,21 +1,77 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Latest Image</title>
+    <title>Image Display & Control</title>
     <style>
-        body { display: flex; justify-content: center; align-items: center; }
-        img { max-width: 100%; max-height: 100vh; }
+        body { 
+            display: flex; 
+            flex-direction: column;
+            align-items: center;
+            gap: 20px;
+            padding: 20px;
+        }
+        img { 
+            max-width: 100%; 
+            max-height: 70vh;
+            border: 2px solid #ccc;
+        }
+        button {
+            padding: 15px 30px;
+            font-size: 18px;
+            background: #007bff;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        button:disabled {
+            background: #6c757d;
+            cursor: not-allowed;
+        }
+        #status {
+            color: #666;
+            font-style: italic;
+        }
     </style>
 </head>
 <body>
     <img id="liveImage" src="/images/latest.jpg?cache=1">
+    <button id="triggerButton">Trigger iPhone Shortcut</button>
+    <div id="status">Ready</div>
 
     <script>
-        // Refresh image every second
+        const button = document.getElementById('triggerButton');
+        const statusDiv = document.getElementById('status');
+        
+        // Image refresh logic
         setInterval(() => {
             const img = document.getElementById('liveImage');
             img.src = `/images/latest.jpg?cache=${Date.now()}`;
         }, 1000);
+
+        // Trigger button handler
+        button.addEventListener('click', async () => {
+            try {
+                button.disabled = true;
+                statusDiv.textContent = 'Sending trigger...';
+                
+                const response = await fetch('/trigger-shortcut', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                if (!response.ok) throw new Error('Trigger failed');
+                
+                statusDiv.textContent = 'Trigger sent successfully!';
+                setTimeout(() => statusDiv.textContent = 'Ready', 2000);
+            } catch (error) {
+                statusDiv.textContent = `Error: ${error.message}`;
+            } finally {
+                button.disabled = false;
+            }
+        });
     </script>
 </body>
 </html>
