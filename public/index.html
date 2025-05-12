@@ -31,11 +31,14 @@
         .placeholder {
             color: #999;
             font-size: 18px;
+            text-align: center;
+            padding: 20px;
         }
         img { 
             max-width: 100%; 
             max-height: 70vh;
             border-radius: 8px;
+            display: none; /* Initially hidden */
         }
         button {
             padding: 15px 30px;
@@ -63,6 +66,7 @@
             padding: 4px 8px;
             border-radius: 4px;
             font-size: 14px;
+            display: none; /* Initially hidden */
         }
     </style>
 </head>
@@ -70,7 +74,7 @@
     <h1>iPhone Camera Trigger</h1>
     <div class="image-container" id="imageContainer">
         <div class="placeholder" id="placeholder">No image captured yet. Press the button to take a photo.</div>
-        <img id="liveImage" src="/images/latest.jpg?cache=1">
+        <img id="liveImage" alt="Captured Image">
         <div id="imageTimestamp" class="timestamp"></div>
     </div>
     <button id="triggerButton">Take Photo</button>
@@ -84,98 +88,102 @@
         const status = document.getElementById('status');
         const placeholder = document.getElementById('placeholder');
         
-        // Variables
-        let isWaitingForPhoto = false;
+        // Track photo request
         let photoRequestTime = null;
-        let lastPhotoTimestamp = null;
+        let isWaitingForPhoto = false;
+        let photoLoadedTime = null;
         let photoRequestTimeout = null;
         
-        // Format time
-        function formatTime() {
-            return new Date().toLocaleTimeString();
+        // Helper functions
+        function formatTime(timestamp) {
+            return new Date(timestamp).toLocaleTimeString();
         }
         
-        // Show placeholder when image fails to load
-        function showPlaceholder() {
+        // Show placeholder, hide image
+        function showPlaceholder(message) {
+            placeholder.textContent = message || "No image captured yet. Press the button to take a photo.";
             placeholder.style.display = 'block';
+            liveImage.style.display = 'none';
             imageTimestamp.style.display = 'none';
         }
         
-        // Hide placeholder when image loads
-        function hidePlaceholder() {
+        // Show image, hide placeholder
+        function showImage(timestamp) {
+            liveImage.style.display = 'block';
             placeholder.style.display = 'none';
             imageTimestamp.style.display = 'block';
+            imageTimestamp.textContent = formatTime(timestamp || Date.now());
         }
         
-        // Check if image is newer than our request
-        function isNewImage(imgElement) {
-            // Get the last modified time from the image
-            const imgSrc = imgElement.src;
-            const cacheBuster = imgSrc.split('cache=')[1];
-            if (!cacheBuster) return false;
+        // Try to load new photo
+        function loadNewPhoto(isInitial = false) {
+            const timestamp = Date.now();
+            const newSrc = `/images/latest.jpg?cache=${timestamp}`;
             
-            const imgTime = parseInt(cacheBuster);
-            
-            // If we have a photo request time, check if image is newer
-            return !photoRequestTime || imgTime > photoRequestTime;
-        }
-        
-        // Refresh image
-        function refreshImage() {
-            const cacheBuster = Date.now();
-            const newSrc = `/images/latest.jpg?cache=${cacheBuster}`;
-            
-            // Create a new image to test loading
+            // Create a test image to check loading
             const testImg = new Image();
+            
             testImg.onload = function() {
-                // Only update visible image if load succeeds
-                liveImage.src = newSrc;
-                imageTimestamp.textContent = formatTime();
-                hidePlaceholder();
-                
-                // If we were waiting for a new photo and it arrived
+                // If waiting for a new photo, verify it's actually new
                 if (isWaitingForPhoto) {
-                    status.textContent = 'Photo received successfully!';
-                    isWaitingForPhoto = false;
-                    triggerButton.disabled = false;
-                    clearTimeout(photoRequestTimeout);
-                    
-                    setTimeout(() => {
-                        if (!isWaitingForPhoto) {
-                            status.textContent = 'Ready';
+                    // Check if the file modification time is AFTER our request
+                    // This is a bit tricky, so we'll use the cache timestamp as a proxy
+                    if (timestamp > photoRequestTime) {
+                        // New photo received!
+                        photoLoadedTime = timestamp;
+                        liveImage.src = newSrc;
+                        showImage(timestamp);
+                        status.textContent = 'Photo received successfully!';
+                        isWaitingForPhoto = false;
+                        triggerButton.disabled = false;
+                        clearTimeout(photoRequestTimeout);
+                        
+                        setTimeout(() => {
+                            if (!isWaitingForPhoto) {
+                                status.textContent = 'Ready';
+                            }
+                        }, 3000);
+                    } else {
+                        // This is an old photo, keep waiting
+                        if (isInitial) {
+                            liveImage.src = newSrc;
+                            showImage(timestamp);
                         }
-                    }, 3000);
+                    }
+                } else {
+                    // Not waiting for a photo, just update normally
+                    liveImage.src = newSrc;
+                    photoLoadedTime = timestamp;
+                    showImage(timestamp);
                 }
             };
             
             testImg.onerror = function() {
-                // If initial load, show placeholder
-                if (!lastPhotoTimestamp) {
+                // Failed to load image
+                if (isWaitingForPhoto) {
+                    // Keep waiting, don't change the UI
+                } else if (isInitial) {
+                    // On initial load, show placeholder
                     showPlaceholder();
                 }
-                
-                // Don't change status unless we're waiting for a photo
-                if (isWaitingForPhoto) {
-                    // Keep waiting message
-                }
+                // Don't update image if load fails
             };
             
             testImg.src = newSrc;
         }
         
-        // Periodically refresh image
-        setInterval(refreshImage, 5000);
-        
-        // Initial load handling
-        liveImage.onload = function() {
-            lastPhotoTimestamp = Date.now();
-            hidePlaceholder();
-            imageTimestamp.textContent = formatTime();
-        };
-        
-        liveImage.onerror = function() {
-            showPlaceholder();
-        };
+        // Check for new photos periodically
+        function checkForNewPhotos() {
+            if (isWaitingForPhoto) {
+                // If waiting for a photo, check more frequently
+                loadNewPhoto();
+                setTimeout(checkForNewPhotos, 2000);
+            } else {
+                // Normal refresh rate
+                loadNewPhoto();
+                setTimeout(checkForNewPhotos, 5000);
+            }
+        }
         
         // Trigger button handler
         triggerButton.addEventListener('click', async () => {
@@ -185,38 +193,52 @@
                 isWaitingForPhoto = true;
                 photoRequestTime = Date.now();
                 
+                // If there was a previous photo, keep showing it but with waiting message
+                if (!liveImage.src || liveImage.style.display === 'none') {
+                    showPlaceholder("Waiting for iPhone to take photo...");
+                } else {
+                    placeholder.textContent = "Waiting for iPhone to take photo..."; 
+                }
+                
                 const response = await fetch('/trigger-shortcut', {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    }
+                    headers: { 'Content-Type': 'application/json' }
                 });
                 
                 if (!response.ok) throw new Error('Trigger failed');
                 
                 status.textContent = 'Trigger sent! Waiting for iPhone to upload photo...';
                 
-                // If no new photo received after 15 seconds, re-enable button
+                // Timeout handling - if no new photo received after 15 seconds
                 photoRequestTimeout = setTimeout(() => {
                     if (isWaitingForPhoto) {
                         status.textContent = 'Photo not received. Try again.';
                         isWaitingForPhoto = false;
                         triggerButton.disabled = false;
+                        // Revert placeholder text if still showing
+                        if (placeholder.style.display !== 'none') {
+                            showPlaceholder();
+                        }
                     }
                 }, 15000);
                 
-                // Force an immediate refresh attempt
-                setTimeout(refreshImage, 1000);
+                // Start immediate checking for new photo
+                loadNewPhoto();
                 
             } catch (error) {
                 status.textContent = `Error: ${error.message}`;
                 isWaitingForPhoto = false;
                 triggerButton.disabled = false;
+                showPlaceholder();
             }
         });
         
-        // Initial refresh
-        refreshImage();
+        // Start with no image shown
+        showPlaceholder();
+        
+        // Initial check and start the checking cycle
+        loadNewPhoto(true);
+        setTimeout(checkForNewPhotos, 5000);
     </script>
 </body>
 </html>
