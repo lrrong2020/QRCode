@@ -6,6 +6,8 @@ const fs = require('fs');
 const app = express();
 const port = 3000;
 
+let shouldRunShortcut = false;
+
 // Configure storage for uploaded files
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
@@ -66,19 +68,15 @@ app.get('/', (req, res) => {
 app.post('/trigger-shortcut', async (req, res) => {
   console.log(`[${new Date().toISOString()}] Trigger request received`);
   
-  try {
-    // Call Pushcut webhook URL
-    await axios.post('https://api.pushcut.io/a3E2WUmTJYbG9XPNGaxbr/execute?shortcut=sc1');
-    res.send('Shortcut triggered successfully');
-  } catch (error) {
-    console.error('Trigger failed:', error);
-    res.status(500).send('Trigger failed');
-  }
-  
-  res.json({ 
-      status: 'success',
-      message: 'Trigger command sent to device'
-  });
+  shouldRunShortcut = true;
+  res.send('Shortcut triggered successfully');
+});
+
+
+
+app.get('/check-trigger', (req, res) => {
+  res.json({ run: shouldRunShortcut });
+  shouldRunShortcut = false; // Reset after check
 });
 
 
