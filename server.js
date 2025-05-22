@@ -43,7 +43,7 @@ app.use((req, res, next) => {
   // console.log('Headers:', req.headers);
   // console.log('Query Parameters:', req.query);
   if (req.method !== 'GET') {
-    console.log('Body:', req.body);
+    // console.log('Body:', req.body);
   }
   next();
 });
