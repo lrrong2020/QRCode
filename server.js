@@ -39,9 +39,9 @@ if (!fs.existsSync('public/images')) {
 
 // Custom middleware to log full request details
 app.use((req, res, next) => {
-  console.log(`\n[${new Date().toISOString()}] Incoming ${req.method} request to ${req.url}`);
-  console.log('Headers:', req.headers);
-  console.log('Query Parameters:', req.query);
+  // console.log(`\n[${new Date().toISOString()}] Incoming ${req.method} request to ${req.url}`);
+  // console.log('Headers:', req.headers);
+  // console.log('Query Parameters:', req.query);
   if (req.method !== 'GET') {
     console.log('Body:', req.body);
   }
@@ -50,22 +50,22 @@ app.use((req, res, next) => {
 
 // Handle POST requests for image upload
 app.post('/upload', upload.single('image'), (req, res) => {
-  console.log('Uploaded Files:', req.file ? req.file : 'None');
-  console.log('Form Fields:', req.body);
+  // console.log('Uploaded Files:', req.file ? req.file : 'None');
+  // console.log('Form Fields:', req.body);
 
   if (!req.file) {
-    console.log('ERROR: No image file found in request');
-    console.log('Full request object:', {
-      method: req.method,
-      url: req.url,
-      headers: req.headers,
-      body: req.body,
-      files: req.files
-    });
+    // console.log('ERROR: No image file found in request');
+    // console.log('Full request object:', {
+    //   method: req.method,
+    //   url: req.url,
+    //   headers: req.headers,
+    //   body: req.body,
+    //   files: req.files
+    // });
     return res.status(400).send('No image uploaded');
   }
 
-  console.log(`Image successfully saved at: ${req.file.path}`);
+  // console.log(`Image successfully saved at: ${req.file.path}`);
   
   // Update the last upload time
   lastUploadTime = new Date();
@@ -88,7 +88,7 @@ app.get('/', (req, res) => {
 
 // Endpoint to trigger the image capture shortcut
 app.post('/trigger-shortcut', async (req, res) => {
-  console.log(`[${new Date().toISOString()}] Trigger request received`);
+  // console.log(`[${new Date().toISOString()}] Trigger request received`);
   
   shouldRunShortcut = true;
   lastTriggerTime = new Date();
@@ -109,7 +109,7 @@ app.get('/check-trigger', (req, res) => {
   
   // Reset flag after check
   if (shouldRunShortcut) {
-    console.log(`[${new Date().toISOString()}] Shortcut check - returning run=true`);
+    // console.log(`[${new Date().toISOString()}] Shortcut check - returning run=true`);
     shouldRunShortcut = false;
   }
   
@@ -127,9 +127,9 @@ app.get('/status', (req, res) => {
 });
 
 app.listen(port, () => {
-  console.log(`Server running at http://localhost:${port}`);
-  console.log(`Access the web interface at http://localhost:${port}`);
-  console.log(`iPhone shortcut endpoints:`);
-  console.log(`  - POST /upload    (for sending images from iPhone)`);
-  console.log(`  - GET  /check-trigger (for iPhone to check if it should take a picture)`);
+  // console.log(`Server running at http://localhost:${port}`);
+  // console.log(`Access the web interface at http://localhost:${port}`);
+  // console.log(`iPhone shortcut endpoints:`);
+  // console.log(`  - POST /upload    (for sending images from iPhone)`);
+  // console.log(`  - GET  /check-trigger (for iPhone to check if it should take a picture)`);
 });
